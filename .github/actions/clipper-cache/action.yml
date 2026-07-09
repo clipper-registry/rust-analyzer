@@ -20,9 +20,16 @@ runs:
     - name: Install clipper
       uses: clipper-registry/setup-clipper@main
 
-    - name: Install fuse-overlayfs and git-restore-mtime
+    # The Ubuntu git-restore-mtime package (2022.12) drives `git whatchanged`,
+    # which current git refuses to run -- it silently restores nothing. Pin
+    # the upstream script (2025.08, uses `git log --raw`) by commit SHA.
+    - name: Install git-restore-mtime (pinned upstream)
       shell: bash
-      run: sudo apt-get install -y --no-install-recommends fuse-overlayfs git-restore-mtime
+      run: |
+        curl -fsSL -o /usr/local/bin/git-restore-mtime \
+          https://raw.githubusercontent.com/MestreLion/git-tools/b5822d297b3ca4a3b6574e78327a464790b14937/git-restore-mtime
+        echo "8cdae72ea524e7c79c5a61bdfb5004cdab0082074f5fb558f1dba270f91e26b2  /usr/local/bin/git-restore-mtime" | sha256sum -c -
+        chmod +x /usr/local/bin/git-restore-mtime
 
     # Push chunks the target into the local store before uploading, so peak
     # disk is ~2x the target size -- more than the ~25GB free on a stock
