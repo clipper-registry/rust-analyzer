@@ -24,6 +24,16 @@ runs:
       shell: bash
       run: sudo apt-get install -y --no-install-recommends fuse-overlayfs git-restore-mtime
 
+    # Push chunks the target into the local store before uploading, so peak
+    # disk is ~2x the target size -- more than the runner's root partition
+    # holds for a target this big. /mnt is the runner's large scratch disk.
+    - name: Put the clipper store on the big disk
+      shell: bash
+      run: |
+        sudo mkdir -p /mnt/clipper-store
+        sudo chown "$(id -u):$(id -g)" /mnt/clipper-store
+        echo "CLIPPER_STORE=/mnt/clipper-store" >> "$GITHUB_ENV"
+
     # Cargo freshness compares source mtimes against cached artifacts; a
     # fresh checkout stamps every file with "now", which would silently
     # invalidate the entire cache. Requires fetch-depth: 0 on the checkout.
