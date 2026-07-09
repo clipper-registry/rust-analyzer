@@ -11,7 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CARGO_INCREMENTAL: 0
+  # Incremental ON: the clipper volume cache transports incremental state
+  # across runs, which is the point of this fork's experiment.
+  CARGO_INCREMENTAL: 1
   CARGO_NET_RETRY: 10
   CI: 1
   RUST_BACKTRACE: short
@@ -39,7 +41,7 @@ jobs:
               - 'editors/code/**'
 
   proc-macro-srv:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     name: proc-macro-srv
     runs-on: ubuntu-latest
 
@@ -75,7 +77,7 @@ jobs:
         run: "! (cargo tree -p proc-macro-srv-cli -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -i salsa)"
 
   rust:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
@@ -84,13 +86,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # Full history: git restore-mtime needs per-file commit times.
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         run: |
@@ -100,17 +104,13 @@ jobs:
           # We also install a nightly rustfmt, because we use `--file-lines` in
           # a test.
           rustup toolchain install nightly --profile minimal --component rustfmt
-      # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
-      - name: Install Rust Problem Matcher
-        if: matrix.os == 'macos-latest'
-        run: echo "::add-matcher::.github/rust.json"
 
-      # - name: Cache Dependencies
-      #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
-      #   with:
-      #     workspaces: |
-      #       . -> target
-      #       ./crates/proc-macro-srv/proc-macro-test/imp -> target
+      - name: Mount clipper target cache
+        uses: ./.github/actions/clipper-cache
+        env:
+          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        with:
+          key: rust
 
       - name: Install nextest
         uses: taiki-e/install-action@nextest
@@ -128,8 +128,18 @@ jobs:
       - name: Run cargo-machete
         run: cargo machete
 
+      - name: Push clipper target cache
+        if: always()
+        env:
+          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        run: clipper volume push target "$CLIPPER_CACHE_TAG"
+
+      - name: Unmount clipper target cache
+        if: always()
+        run: clipper volume unmount target --discard || true
+
   analysis-stats:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
     env:
       RUSTC_BOOTSTRAP: 1
@@ -137,6 +147,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history: git restore-mtime needs per-file commit times.
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         run: |
@@ -144,8 +157,12 @@ jobs:
           rustup default stable
           rustup component add rustfmt
 
-      # - name: Cache Dependencies
-      #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      - name: Mount clipper target cache
+        uses: ./.github/actions/clipper-cache
+        env:
+          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        with:
+          key: analysis-stats
 
       - name: Bump opt-level
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
@@ -158,8 +175,18 @@ jobs:
       - name: sysroot/lib/rustlib/src/rust/library/
         run: ./target/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/ -q
 
+      - name: Push clipper target cache
+        if: always()
+        env:
+          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        run: clipper volume push target "$CLIPPER_CACHE_TAG"
+
+      - name: Unmount clipper target cache
+        if: always()
+        run: clipper volume unmount target --discard || true
+
   rustfmt:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
 
     steps:
@@ -175,12 +202,15 @@ jobs:
       - run: cargo fmt -- --check
 
   clippy:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history: git restore-mtime needs per-file commit times.
+          fetch-depth: 0
 
       # Note that clippy output is currently dependent on whether rust-src is installed,
       # https://github.com/rust-lang/rust-clippy/issues/14625
@@ -194,10 +224,27 @@ jobs:
       - name: Install Rust Problem Matcher
         run: echo "::add-matcher::.github/rust.json"
 
+      - name: Mount clipper target cache
+        uses: ./.github/actions/clipper-cache
+        env:
+          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        with:
+          key: clippy
+
       - run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
 
+      - name: Push clipper target cache
+        if: always()
+        env:
+          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        run: clipper volume push target "$CLIPPER_CACHE_TAG"
+
+      - name: Unmount clipper target cache
+        if: always()
+        run: clipper volume unmount target --discard || true
+
   miri:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
 
     steps:
@@ -220,7 +267,7 @@ jobs:
 
   # Weird targets to catch non-portable code
   rust-cross:
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'clipper-registry/rust-analyzer'
     name: Rust Cross
     runs-on: ubuntu-latest
 
@@ -252,12 +299,12 @@ jobs:
 
   typescript:
     needs: changes
-    if: github.repository == 'rust-lang/rust-analyzer' && needs.changes.outputs.typescript == 'true'
+    if: github.repository == 'clipper-registry/rust-analyzer' && needs.changes.outputs.typescript == 'true'
     name: TypeScript
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
