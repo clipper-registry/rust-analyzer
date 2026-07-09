@@ -25,14 +25,17 @@ runs:
       run: sudo apt-get install -y --no-install-recommends fuse-overlayfs git-restore-mtime
 
     # Push chunks the target into the local store before uploading, so peak
-    # disk is ~2x the target size -- more than the runner's root partition
-    # holds for a target this big. /mnt is the runner's large scratch disk.
-    - name: Put the clipper store on the big disk
+    # disk is ~2x the target size -- more than the ~25GB free on a stock
+    # runner. Reclaim ~30GB of root disk by removing preinstalled toolchains
+    # this job never uses (the standard free-disk-space pattern; /mnt is the
+    # SMALL disk on GH runners, ~10GB usable, so relocating doesn't help).
+    - name: Reclaim runner disk space
       shell: bash
       run: |
-        sudo mkdir -p /mnt/clipper-store
-        sudo chown "$(id -u):$(id -g)" /mnt/clipper-store
-        echo "CLIPPER_STORE=/mnt/clipper-store" >> "$GITHUB_ENV"
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+          /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
+          /usr/local/.ghcup /usr/share/swift
+        df -h / /mnt
 
     # Cargo freshness compares source mtimes against cached artifacts; a
     # fresh checkout stamps every file with "now", which would silently
