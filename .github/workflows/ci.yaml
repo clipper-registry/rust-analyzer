@@ -105,6 +105,18 @@ jobs:
           # a test.
           rustup toolchain install nightly --profile minimal --component rustfmt
 
+      # Push chunking peaks at ~2x the target size, and this job's ~10GB
+      # target overflows the ~25GB free on a stock runner. Remove
+      # preinstalled toolchains in the background (~65s); only the push at
+      # the end needs the space, so the build starts immediately and the
+      # push step waits on the pidfile.
+      - name: Reclaim runner disk space (background)
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/.ghcup /usr/share/swift \
+            >/dev/null 2>&1 &
+          echo $! > /tmp/clipper-reclaim.pid
+
       - name: Mount clipper target cache
         uses: ./.github/actions/clipper-cache
         env:
@@ -132,7 +144,14 @@ jobs:
         if: always()
         env:
           CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
-        run: clipper volume push target "$CLIPPER_CACHE_TAG"
+        run: |
+          # Push chunking peaks at ~2x target size; make sure the background
+          # disk reclaim has finished freeing space first.
+          if [ -f /tmp/clipper-reclaim.pid ]; then
+            while ps -p "$(cat /tmp/clipper-reclaim.pid)" >/dev/null 2>&1; do sleep 1; done
+            df -h /
+          fi
+          clipper volume push target "$CLIPPER_CACHE_TAG"
 
       - name: Unmount clipper target cache
         if: always()

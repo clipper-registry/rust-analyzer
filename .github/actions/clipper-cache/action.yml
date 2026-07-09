@@ -31,19 +31,6 @@ runs:
         echo "8cdae72ea524e7c79c5a61bdfb5004cdab0082074f5fb558f1dba270f91e26b2  /usr/local/bin/git-restore-mtime" | sha256sum -c -
         chmod +x /usr/local/bin/git-restore-mtime
 
-    # Push chunks the target into the local store before uploading, so peak
-    # disk is ~2x the target size -- more than the ~25GB free on a stock
-    # runner. Reclaim ~30GB of root disk by removing preinstalled toolchains
-    # this job never uses (the standard free-disk-space pattern; /mnt is the
-    # SMALL disk on GH runners, ~10GB usable, so relocating doesn't help).
-    - name: Reclaim runner disk space
-      shell: bash
-      run: |
-        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-          /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
-          /usr/local/.ghcup /usr/share/swift
-        df -h / /mnt
-
     # Cargo freshness compares source mtimes against cached artifacts; a
     # fresh checkout stamps every file with "now", which would silently
     # invalidate the entire cache. Requires fetch-depth: 0 on the checkout.
