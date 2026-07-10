@@ -48,6 +48,21 @@ runs:
         CUTOFF=$(git log -1 --format=%ct)
         find . -path ./.git -prune -o -type d -newermt "@$CUTOFF" -print0 |
           xargs -0 -r touch -d "2000-01-01T00:00:00Z"
+        # VCS-embedding build scripts (rust-analyzer's, vergen, built, ...)
+        # declare rerun-if-changed=.git/HEAD, whose mtime is checkout-fresh
+        # every run -- the script re-runs, its output file's mtime bumps,
+        # and every dependent crate rebuilds on identical code. Date HEAD
+        # (and the current ref) to the head commit's time: stable across
+        # re-runs of a commit, newer than any prior run's outputs when a
+        # real commit lands. (A force-pushed commit with an OLD committer
+        # date can leave a stale hash embedded in dev builds -- cosmetic,
+        # same commit-time bargain restore-mtime itself makes.)
+        touch -d "@$CUTOFF" .git/HEAD || true
+        BRANCH=$(git branch --show-current)
+        if [ -n "$BRANCH" ]; then
+          REF_FILE=$(git rev-parse --git-path "refs/heads/$BRANCH")
+          [ -f "$REF_FILE" ] && touch -d "@$CUTOFF" "$REF_FILE" || true
+        fi
 
     - name: Mount target cache
       shell: bash
