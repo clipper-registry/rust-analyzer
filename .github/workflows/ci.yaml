@@ -151,7 +151,13 @@ jobs:
             while ps -p "$(cat /tmp/clipper-reclaim.pid)" >/dev/null 2>&1; do sleep 1; done
             df -h /
           fi
-          clipper volume push target "$CLIPPER_CACHE_TAG"
+          # Split the churny small-file paths (fingerprints, incremental
+          # session state) into their own tar blobs so warm-run churn
+          # re-uploads megabytes instead of rewriting the small-file monolith.
+          clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
+            --split-glob 'debug/.fingerprint/**' \
+            --split-glob 'debug/incremental/**' \
+            --split-glob '.rustc_info.json'
 
       - name: Unmount clipper target cache
         if: always()
@@ -198,7 +204,11 @@ jobs:
         if: always()
         env:
           CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
-        run: clipper volume push target "$CLIPPER_CACHE_TAG"
+        run: |
+          clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
+            --split-glob 'debug/.fingerprint/**' \
+            --split-glob 'debug/incremental/**' \
+            --split-glob '.rustc_info.json'
 
       - name: Unmount clipper target cache
         if: always()
@@ -256,7 +266,11 @@ jobs:
         if: always()
         env:
           CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
-        run: clipper volume push target "$CLIPPER_CACHE_TAG"
+        run: |
+          clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
+            --split-glob 'debug/.fingerprint/**' \
+            --split-glob 'debug/incremental/**' \
+            --split-glob '.rustc_info.json'
 
       - name: Unmount clipper target cache
         if: always()

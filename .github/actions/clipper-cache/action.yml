@@ -51,7 +51,7 @@ runs:
         MASTER_TAG="$CACHE_REPO:$CACHE_KEY-master"
         echo "CLIPPER_CACHE_TAG=$BRANCH_TAG" >> "$GITHUB_ENV"
         mkdir -p target
-        if clipper volume mount target "$BRANCH_TAG" "$MASTER_TAG"; then
+        if clipper volume mount target -j 16 "$BRANCH_TAG" "$MASTER_TAG"; then
           echo "mounted cache (fallback order: $BRANCH_TAG, $MASTER_TAG)"
         else
           echo "no cache tag found; cold start (push will seed $BRANCH_TAG)"
