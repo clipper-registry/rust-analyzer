@@ -36,7 +36,18 @@ runs:
     # invalidate the entire cache. Requires fetch-depth: 0 on the checkout.
     - name: Restore source mtimes from git history
       shell: bash
-      run: git restore-mtime
+      run: |
+        git restore-mtime
+        # git-restore-mtime can only date directories from create/delete
+        # events in history; dirs without any keep checkout-fresh mtimes,
+        # which makes cargo's rerun-if-changed=<dir> fire every run (that
+        # one stale dir rebuilt a 4-crate chain and re-uploaded ~500MB of
+        # incremental state per run). Clamp dirs still newer than the
+        # newest commit to a fixed old date; genuine membership changes
+        # carry commit-dated mtimes and stay detectable.
+        CUTOFF=$(git log -1 --format=%ct)
+        find . -path ./.git -prune -o -type d -newermt "@$CUTOFF" -print0 |
+          xargs -0 -r touch -d "2000-01-01T00:00:00Z"
 
     - name: Mount target cache
       shell: bash
