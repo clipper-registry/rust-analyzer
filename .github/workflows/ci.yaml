@@ -157,11 +157,12 @@ jobs:
           clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
             --split-glob 'debug/.fingerprint/**' \
             --split-glob 'debug/incremental/**' \
-            --split-glob '.rustc_info.json'
+            --split-glob '.rustc_info.json' \
+            --cdc
 
       - name: Unmount clipper target cache
         if: always()
-        run: clipper volume unmount target --discard || true
+        run: clipper volume unmount target || true
 
   analysis-stats:
     if: github.repository == 'clipper-registry/rust-analyzer'
@@ -208,11 +209,12 @@ jobs:
           clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
             --split-glob 'debug/.fingerprint/**' \
             --split-glob 'debug/incremental/**' \
-            --split-glob '.rustc_info.json'
+            --split-glob '.rustc_info.json' \
+            --cdc
 
       - name: Unmount clipper target cache
         if: always()
-        run: clipper volume unmount target --discard || true
+        run: clipper volume unmount target || true
 
   rustfmt:
     if: github.repository == 'clipper-registry/rust-analyzer'
@@ -270,11 +272,12 @@ jobs:
           clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
             --split-glob 'debug/.fingerprint/**' \
             --split-glob 'debug/incremental/**' \
-            --split-glob '.rustc_info.json'
+            --split-glob '.rustc_info.json' \
+            --cdc
 
       - name: Unmount clipper target cache
         if: always()
-        run: clipper volume unmount target --discard || true
+        run: clipper volume unmount target || true
 
   miri:
     if: github.repository == 'clipper-registry/rust-analyzer'
