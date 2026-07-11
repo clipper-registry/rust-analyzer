@@ -82,6 +82,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
+      # Prefetch 8 chunks ahead of the linker's reads through the mount, to
+      # pipeline the cached-closure fetches instead of one round-trip per chunk.
+      # Experiment: measure the relink time vs prior (default 1) runs.
+      CLIPPER_READAHEAD: 8
 
     strategy:
       fail-fast: false
