@@ -131,6 +131,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo codegen --check
 
+      - name: Fingerprint diagnostic (TEMP -- what does cargo rebuild and why)
+        run: CARGO_LOG=cargo::core::compiler::fingerprint=info cargo test --workspace --no-run
+
       - name: Run tests
         run: cargo nextest run --no-fail-fast --hide-progress-bar
 
