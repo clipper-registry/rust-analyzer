@@ -12,7 +12,7 @@ inputs:
   repo:
     description: Registry repository holding the cache tags.
     required: false
-    default: clipper.dev/clipper/ra-ci-cache
+    default: clipper.dev/clipper/ra-ci-cache-v2
 
 runs:
   using: composite
