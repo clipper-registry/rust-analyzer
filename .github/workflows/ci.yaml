@@ -82,10 +82,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      # Prefetch a couple of chunks ahead of the linker's reads to pipeline the
-      # cached-closure fetches. Depth 2 is tuned for 64 MiB chunks (fewer, larger
-      # chunks need far less lookahead than the 8 that suited 8 MiB chunks).
-      CLIPPER_READAHEAD: 2
+      # Prefetch window = readahead x chunk-size. 1 x 64 MiB = 64 MiB in flight,
+      # matching the 8 x 8 MiB window of the previously fast config; at 64 MiB
+      # chunks, depth 1 is the equivalent of depth 8 at 8 MiB.
+      CLIPPER_READAHEAD: 1
 
     strategy:
       fail-fast: false
