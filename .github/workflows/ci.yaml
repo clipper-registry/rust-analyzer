@@ -82,10 +82,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      # Prefetch window = readahead x chunk-size. 1 x 64 MiB = 64 MiB in flight,
-      # matching the 8 x 8 MiB window of the previously fast config; at 64 MiB
-      # chunks, depth 1 is the equivalent of depth 8 at 8 MiB.
-      CLIPPER_READAHEAD: 1
 
     strategy:
       fail-fast: false
