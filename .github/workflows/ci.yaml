@@ -240,6 +240,10 @@ jobs:
     env:
       # Content-based freshness (see the rust job); no mtime hacks needed.
       CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
+      # Drop -D warnings so new nightly clippy lints don't error out (the
+      # explicit -D clippy::* denies below still apply). Nightly clippy is
+      # stricter than the stable clippy this code targets.
+      RUSTFLAGS: "-W unreachable-pub --cfg no_salsa_async_drops"
 
     steps:
       - name: Checkout repository
