@@ -88,6 +88,8 @@ jobs:
       # Nightly (required for -Z checksum-freshness) may surface new lints;
       # don't let -D warnings mask the cache experiment.
       RUSTFLAGS: "-W unreachable-pub --cfg no_salsa_async_drops"
+      # Prefetch depth (mount-time only; does not touch the cache fingerprint).
+      CLIPPER_READAHEAD: "2"
 
     strategy:
       fail-fast: false
