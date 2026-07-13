@@ -82,12 +82,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      # Content-based freshness: cargo compares source checksums, not mtimes,
-      # so the cache reuses correctly on a fresh checkout with no mtime hacks.
-      CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
-      # Nightly (required for -Z checksum-freshness) may surface new lints;
-      # don't let -D warnings mask the cache experiment.
-      RUSTFLAGS: "-W unreachable-pub --cfg no_salsa_async_drops"
 
     strategy:
       fail-fast: false
@@ -99,14 +93,17 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # Full history: git restore-mtime needs per-file commit times.
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         run: |
-          # Nightly is required for cargo -Z checksum-freshness. Floating for now
-          # to prove out the approach; pin to a known-good date once green. This
-          # nightly also provides the rustfmt the --file-lines test needs.
-          rustup toolchain install nightly --profile minimal -c rust-src -c rustfmt
-          rustup default nightly
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add --toolchain stable rust-src rustfmt
+          # We also install a nightly rustfmt, because we use `--file-lines` in
+          # a test.
+          rustup toolchain install nightly --profile minimal --component rustfmt
 
       # Push chunking peaks at ~2x the target size, and this job's ~10GB
       # target overflows the ~25GB free on a stock runner. Remove
@@ -172,18 +169,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUSTC_BOOTSTRAP: 1
-      # Content-based freshness (see the rust job); no mtime hacks needed.
-      CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history: git restore-mtime needs per-file commit times.
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         run: |
-          # Pinned nightly for cargo -Z checksum-freshness.
-          rustup toolchain install nightly --profile minimal -c rustfmt
-          rustup default nightly
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add rustfmt
 
       - name: Mount clipper target cache
         uses: ./.github/actions/clipper-cache
@@ -237,25 +235,21 @@ jobs:
   clippy:
     if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
-    env:
-      # Content-based freshness (see the rust job); no mtime hacks needed.
-      CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
-      # Drop -D warnings so new nightly clippy lints don't error out (the
-      # explicit -D clippy::* denies below still apply). Nightly clippy is
-      # stricter than the stable clippy this code targets.
-      RUSTFLAGS: "-W unreachable-pub --cfg no_salsa_async_drops"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history: git restore-mtime needs per-file commit times.
+          fetch-depth: 0
 
       # Note that clippy output is currently dependent on whether rust-src is installed,
       # https://github.com/rust-lang/rust-clippy/issues/14625
       - name: Install Rust toolchain
         run: |
-          # Pinned nightly for cargo -Z checksum-freshness.
-          rustup toolchain install nightly --profile minimal -c rust-src -c clippy
-          rustup default nightly
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add --toolchain stable rust-src clippy
 
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
