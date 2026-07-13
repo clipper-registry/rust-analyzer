@@ -105,7 +105,7 @@ jobs:
           # Nightly is required for cargo -Z checksum-freshness. Floating for now
           # to prove out the approach; pin to a known-good date once green. This
           # nightly also provides the rustfmt the --file-lines test needs.
-          rustup toolchain install nightly --profile minimal --component rust-src rustfmt
+          rustup toolchain install nightly --profile minimal -c rust-src -c rustfmt
           rustup default nightly
 
       # Push chunking peaks at ~2x the target size, and this job's ~10GB
@@ -182,7 +182,7 @@ jobs:
       - name: Install Rust toolchain
         run: |
           # Pinned nightly for cargo -Z checksum-freshness.
-          rustup toolchain install nightly --profile minimal --component rustfmt
+          rustup toolchain install nightly --profile minimal -c rustfmt
           rustup default nightly
 
       - name: Mount clipper target cache
@@ -250,7 +250,7 @@ jobs:
       - name: Install Rust toolchain
         run: |
           # Pinned nightly for cargo -Z checksum-freshness.
-          rustup toolchain install nightly --profile minimal --component rust-src clippy
+          rustup toolchain install nightly --profile minimal -c rust-src -c clippy
           rustup default nightly
 
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
