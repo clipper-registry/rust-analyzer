@@ -82,9 +82,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      # Content-based freshness: cargo compares source checksums, not mtimes,
-      # so the cache reuses correctly on a fresh checkout with no mtime hacks.
-      CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
       # Nightly (required for -Z checksum-freshness) may surface new lints;
       # don't let -D warnings mask the cache experiment.
       RUSTFLAGS: "-W unreachable-pub --cfg no_salsa_async_drops"
@@ -121,11 +118,13 @@ jobs:
           echo $! > /tmp/clipper-reclaim.pid
 
       - name: Mount clipper target cache
-        uses: ./.github/actions/clipper-cache
+        uses: clipper-registry/cache/rust@main
         env:
           CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
         with:
+          repo: clipper.dev/clipper/ra-ci-cache-v3
           key: rust
+          base-branch: master
 
       - name: Install nextest
         uses: taiki-e/install-action@nextest
@@ -143,37 +142,21 @@ jobs:
       - name: Run cargo-machete
         run: cargo machete
 
-      - name: Push clipper target cache
+      - name: Wait for disk reclaim
         if: always()
-        env:
-          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
+        # Push chunking (in the cache action's post step) peaks at ~2x target
+        # size; the background reclaim must have finished freeing space first.
         run: |
-          # Push chunking peaks at ~2x target size; make sure the background
-          # disk reclaim has finished freeing space first.
           if [ -f /tmp/clipper-reclaim.pid ]; then
             while ps -p "$(cat /tmp/clipper-reclaim.pid)" >/dev/null 2>&1; do sleep 1; done
             df -h /
           fi
-          # Split the churny small-file paths (fingerprints, incremental
-          # session state) into their own tar blobs so warm-run churn
-          # re-uploads megabytes instead of rewriting the small-file monolith.
-          clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
-            --split-glob 'debug/.fingerprint/**' \
-            --split-glob 'debug/incremental/**' \
-            --split-glob '.rustc_info.json' \
-            --cdc
-
-      - name: Unmount clipper target cache
-        if: always()
-        run: clipper volume unmount target || true
 
   analysis-stats:
     if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
     env:
       RUSTC_BOOTSTRAP: 1
-      # Content-based freshness (see the rust job); no mtime hacks needed.
-      CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
 
     steps:
       - name: Checkout repository
@@ -186,11 +169,13 @@ jobs:
           rustup default nightly
 
       - name: Mount clipper target cache
-        uses: ./.github/actions/clipper-cache
+        uses: clipper-registry/cache/rust@main
         env:
           CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
         with:
+          repo: clipper.dev/clipper/ra-ci-cache-v3
           key: analysis-stats
+          base-branch: master
 
       - name: Bump opt-level
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
@@ -202,21 +187,6 @@ jobs:
 
       - name: sysroot/lib/rustlib/src/rust/library/
         run: ./target/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/ -q
-
-      - name: Push clipper target cache
-        if: always()
-        env:
-          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
-        run: |
-          clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
-            --split-glob 'debug/.fingerprint/**' \
-            --split-glob 'debug/incremental/**' \
-            --split-glob '.rustc_info.json' \
-            --cdc
-
-      - name: Unmount clipper target cache
-        if: always()
-        run: clipper volume unmount target || true
 
   rustfmt:
     if: github.repository == 'clipper-registry/rust-analyzer'
@@ -238,8 +208,6 @@ jobs:
     if: github.repository == 'clipper-registry/rust-analyzer'
     runs-on: ubuntu-latest
     env:
-      # Content-based freshness (see the rust job); no mtime hacks needed.
-      CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
       # Drop -D warnings so new nightly clippy lints don't error out (the
       # explicit -D clippy::* denies below still apply). Nightly clippy is
       # stricter than the stable clippy this code targets.
@@ -262,28 +230,15 @@ jobs:
         run: echo "::add-matcher::.github/rust.json"
 
       - name: Mount clipper target cache
-        uses: ./.github/actions/clipper-cache
+        uses: clipper-registry/cache/rust@main
         env:
           CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
         with:
+          repo: clipper.dev/clipper/ra-ci-cache-v3
           key: clippy
+          base-branch: master
 
       - run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
-
-      - name: Push clipper target cache
-        if: always()
-        env:
-          CLIPPER_CREDENTIALS: ${{ secrets.CLIPPER_CI_CREDENTIALS }}
-        run: |
-          clipper volume push target "$CLIPPER_CACHE_TAG" -j 16 \
-            --split-glob 'debug/.fingerprint/**' \
-            --split-glob 'debug/incremental/**' \
-            --split-glob '.rustc_info.json' \
-            --cdc
-
-      - name: Unmount clipper target cache
-        if: always()
-        run: clipper volume unmount target || true
 
   miri:
     if: github.repository == 'clipper-registry/rust-analyzer'
