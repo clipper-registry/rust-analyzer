@@ -85,6 +85,9 @@ jobs:
       # Nightly (required for -Z checksum-freshness) may surface new lints;
       # don't let -D warnings mask the cache experiment.
       RUSTFLAGS: "-W unreachable-pub --cfg no_salsa_async_drops"
+      # TEMPORARY diagnostics for warm-push churn (2.2GB on a no-op commit):
+      # cargo logs why each unit is dirty between runs.
+      CARGO_LOG: cargo::core::compiler::fingerprint=info
 
     strategy:
       fail-fast: false
