@@ -4,6 +4,11 @@
 use std::{env, process::Command};
 
 fn main() {
+    // RUSTC is this script's only input (a toolchain switch already busts every
+    // fingerprint via the compiler hash). Without a rerun-if directive cargo
+    // falls back to a whole-package mtime scan, which re-runs the script and
+    // rebuilds the crate on every fresh checkout.
+    println!("cargo::rerun-if-env-changed=RUSTC");
     let rustc = env::var("RUSTC").expect("proc-macro-srv's build script expects RUSTC to be set");
     #[allow(clippy::disallowed_methods)]
     let output = Command::new(rustc).arg("--version").output().expect("rustc --version must run");

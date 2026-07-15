@@ -17,8 +17,19 @@ use std::{
 
 use cargo_metadata::Message;
 
+// The imp sources are this script's real inputs. Routing them through the
+// script's own compilation (dep-info entries, content-hashed under cargo's
+// checksum-freshness) replaces the directory mtime check, which a fresh CI
+// checkout always tripped; edits still recompile and re-run the script.
+const _: &str = include_str!("imp/Cargo.toml");
+const _: &str = include_str!("imp/build.rs");
+const _: &str = include_str!("imp/src/lib.rs");
+
 fn main() {
-    println!("cargo:rerun-if-changed=imp");
+    // The script branches on this env (has_features); declaring it also keeps
+    // cargo off the whole-package mtime-scan fallback now that no path
+    // directive remains.
+    println!("cargo:rerun-if-env-changed=RUSTC_BOOTSTRAP");
 
     let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
 
