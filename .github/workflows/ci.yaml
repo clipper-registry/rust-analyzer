@@ -99,11 +99,11 @@ jobs:
 
       - name: Install Rust toolchain
         run: |
-          # Nightly is required for cargo -Z checksum-freshness. Floating for now
-          # to prove out the approach; pin to a known-good date once green. This
-          # nightly also provides the rustfmt the --file-lines test needs.
-          rustup toolchain install nightly --profile minimal -c rust-src -c rustfmt
-          rustup default nightly
+          # Pinned nightly (required for cargo -Z checksum-freshness): every
+          # floating-nightly roll is a new compiler that busts the whole cache.
+          # This nightly also provides the rustfmt the --file-lines test needs.
+          rustup toolchain install nightly-2026-07-13 --profile minimal -c rust-src -c rustfmt
+          rustup default nightly-2026-07-13
 
       # Push chunking peaks at ~2x the target size, and this job's ~10GB
       # target overflows the ~25GB free on a stock runner. Remove
@@ -164,8 +164,8 @@ jobs:
       - name: Install Rust toolchain
         run: |
           # Pinned nightly for cargo -Z checksum-freshness.
-          rustup toolchain install nightly --profile minimal -c rustfmt
-          rustup default nightly
+          rustup toolchain install nightly-2026-07-13 --profile minimal -c rustfmt
+          rustup default nightly-2026-07-13
 
       - name: Mount clipper target cache
         uses: clipper-registry/cache/rust@main
@@ -220,8 +220,8 @@ jobs:
       - name: Install Rust toolchain
         run: |
           # Pinned nightly for cargo -Z checksum-freshness.
-          rustup toolchain install nightly --profile minimal -c rust-src -c clippy
-          rustup default nightly
+          rustup toolchain install nightly-2026-07-13 --profile minimal -c rust-src -c clippy
+          rustup default nightly-2026-07-13
 
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
