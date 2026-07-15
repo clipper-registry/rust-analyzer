@@ -124,7 +124,6 @@ jobs:
         with:
           repo: clipper.dev/clipper/ra-ci-cache-v3
           key: rust
-          base-branch: master
 
       - name: Install nextest
         uses: taiki-e/install-action@nextest
@@ -175,7 +174,6 @@ jobs:
         with:
           repo: clipper.dev/clipper/ra-ci-cache-v3
           key: analysis-stats
-          base-branch: master
 
       - name: Bump opt-level
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
@@ -236,7 +234,6 @@ jobs:
         with:
           repo: clipper.dev/clipper/ra-ci-cache-v3
           key: clippy
-          base-branch: master
 
       - run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
 
